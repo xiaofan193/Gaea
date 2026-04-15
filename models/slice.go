@@ -72,7 +72,9 @@ func (s *Slice) verify() error {
 	}
 
 	switch s.DatabaseType {
-	case "mysql", "oceanbase", "postgresql":
+	case "mysql":
+	case "oceanbase":
+	case "postgresql":
 	default:
 		return fmt.Errorf("unsupported database type: %s, must be mysql, oceanbase or postgresql", s.DatabaseType)
 	}

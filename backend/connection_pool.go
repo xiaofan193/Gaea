@@ -43,7 +43,7 @@ var (
 type connectionPoolImpl struct {
 	mu          sync.RWMutex
 	connections *util.ResourcePool
-	checkConn   *pooledConnectImpl
+	checkConn   PooledConnect
 
 	addr       string
 	datacenter string
@@ -124,7 +124,22 @@ func (cp *connectionPoolImpl) connect() (util.Resource, error) {
 	case DBTypeOceanBase:
 		c, err = NewDirectConnection(cp.addr, cp.user, cp.password, cp.db, cp.charset, cp.collationID, cp.clientCapability, DBTypeOceanBase)
 	case DBTypePostgreSQL:
-		return nil, fmt.Errorf("postgresql is not supported yet, please use MySQL or OceanBase")
+		pgConn, pgErr := NewPgDirectConnection(cp.addr, cp.user, cp.password, cp.db)
+		if pgErr != nil {
+			return nil, pgErr
+		}
+		if cp.initConnect != "" {
+			for _, sql := range strings.Split(cp.initConnect, ";") {
+				if sql == "" {
+					continue
+				}
+				_, err := pgConn.Execute(sql, 0)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+		return &pgPooledConnectImpl{pgConn: pgConn, pool: cp}, nil
 	default:
 		c, err = NewDirectConnection(cp.addr, cp.user, cp.password, cp.db, cp.charset, cp.collationID, cp.clientCapability, DBTypeMySQL)
 	}
@@ -171,8 +186,16 @@ func (cp *connectionPoolImpl) Close() {
 }
 
 // tryReuse reset params of connection before reuse
-func (cp *connectionPoolImpl) tryReuse(pc *pooledConnectImpl) error {
-	return pc.directConnection.ResetConnection()
+func (cp *connectionPoolImpl) tryReuse(pc PooledConnect) error {
+	switch cp.dbType {
+	case DBTypePostgreSQL:
+		return nil
+	default:
+		if impl, ok := pc.(*pooledConnectImpl); ok {
+			return impl.directConnection.ResetConnection()
+		}
+		return nil
+	}
 }
 
 // Get return a connection, you should call PooledConnect's Recycle once done
@@ -189,7 +212,7 @@ func (cp *connectionPoolImpl) Get(ctx context.Context) (pc PooledConnect, err er
 		return nil, err
 	}
 
-	pc = r.(*pooledConnectImpl)
+	pc = r.(PooledConnect)
 
 	//do ping when over the ping time. if error happen, create new one
 	if !pc.GetReturnTime().IsZero() && time.Until(pc.GetReturnTime().Add(pingPeriod)) < 0 {
@@ -217,7 +240,7 @@ func (cp *connectionPoolImpl) GetCheck(ctx context.Context) (PooledConnect, erro
 		if err != nil {
 			return
 		}
-		cp.checkConn = checkConn.(*pooledConnectImpl)
+		cp.checkConn = checkConn.(PooledConnect)
 
 		if cp.checkConn.IsClosed() {
 			if err := cp.checkConn.Reconnect(); err != nil {
@@ -248,7 +271,7 @@ func (cp *connectionPoolImpl) Put(pc PooledConnect) {
 
 	if pc == nil {
 		p.Put(nil)
-	} else if err := cp.tryReuse(pc.(*pooledConnectImpl)); err != nil {
+	} else if err := cp.tryReuse(pc); err != nil {
 		pc.Close()
 		p.Put(nil)
 	} else {

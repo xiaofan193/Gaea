@@ -16,6 +16,7 @@ require (
 	github.com/gin-contrib/gzip v0.0.1
 	github.com/gin-gonic/gin v1.7.7
 	github.com/go-ini/ini v1.42.0
+	github.com/go-pg/pg/v10 v10.15.0
 	github.com/go-playground/validator/v10 v10.8.0 // indirect
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/gogo/protobuf v1.3.2 // indirect

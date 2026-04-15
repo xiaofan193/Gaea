@@ -121,8 +121,6 @@ func (cp *connectionPoolImpl) connect() (util.Resource, error) {
 	var err error
 
 	switch cp.dbType {
-	case DBTypeOceanBase:
-		c, err = NewDirectConnection(cp.addr, cp.user, cp.password, cp.db, cp.charset, cp.collationID, cp.clientCapability, DBTypeOceanBase)
 	case DBTypePostgreSQL:
 		pgConn, pgErr := NewPgDirectConnection(cp.addr, cp.user, cp.password, cp.db)
 		if pgErr != nil {
@@ -141,7 +139,7 @@ func (cp *connectionPoolImpl) connect() (util.Resource, error) {
 		}
 		return &pgPooledConnectImpl{pgConn: pgConn, pool: cp}, nil
 	default:
-		c, err = NewDirectConnection(cp.addr, cp.user, cp.password, cp.db, cp.charset, cp.collationID, cp.clientCapability, DBTypeMySQL)
+		c, err = NewDirectConnection(cp.addr, cp.user, cp.password, cp.db, cp.charset, cp.collationID, cp.clientCapability, cp.dbType)
 	}
 	if err != nil {
 		return nil, err

@@ -60,10 +60,20 @@ type connectionPoolImpl struct {
 	clientCapability uint32
 	initConnect      string
 	lastChecked      int64
+	dbType           DBType
 }
 
 // NewConnectionPool create connection pool
 func NewConnectionPool(addr, user, password, db string, capacity, maxCapacity int, idleTimeout time.Duration, charset string, collationID mysql.CollationID, clientCapability uint32, initConnect string, dc string) ConnectionPool {
+	return newConnectionPoolWithDBType(addr, user, password, db, capacity, maxCapacity, idleTimeout, charset, collationID, clientCapability, initConnect, dc, DBTypeMySQL)
+}
+
+// NewConnectionPoolWithDBType creates a connection pool for the specified database type
+func NewConnectionPoolWithDBType(addr, user, password, db string, capacity, maxCapacity int, idleTimeout time.Duration, charset string, collationID mysql.CollationID, clientCapability uint32, initConnect string, dc string, dbType DBType) ConnectionPool {
+	return newConnectionPoolWithDBType(addr, user, password, db, capacity, maxCapacity, idleTimeout, charset, collationID, clientCapability, initConnect, dc, dbType)
+}
+
+func newConnectionPoolWithDBType(addr, user, password, db string, capacity, maxCapacity int, idleTimeout time.Duration, charset string, collationID mysql.CollationID, clientCapability uint32, initConnect string, dc string, dbType DBType) ConnectionPool {
 	return &connectionPoolImpl{
 		addr:             addr,
 		datacenter:       dc,
@@ -78,6 +88,7 @@ func NewConnectionPool(addr, user, password, db string, capacity, maxCapacity in
 		clientCapability: clientCapability,
 		initConnect:      strings.Trim(strings.TrimSpace(initConnect), ";"),
 		lastChecked:      time.Now().Unix(),
+		dbType:           dbType,
 	}
 }
 
@@ -106,7 +117,17 @@ func (cp *connectionPoolImpl) Open() error {
 
 // connect is used by the resource pool to create new resource.It's factory method
 func (cp *connectionPoolImpl) connect() (util.Resource, error) {
-	c, err := NewDirectConnection(cp.addr, cp.user, cp.password, cp.db, cp.charset, cp.collationID, cp.clientCapability)
+	var c *DirectConnection
+	var err error
+
+	switch cp.dbType {
+	case DBTypeOceanBase:
+		c, err = NewDirectConnection(cp.addr, cp.user, cp.password, cp.db, cp.charset, cp.collationID, cp.clientCapability, DBTypeOceanBase)
+	case DBTypePostgreSQL:
+		return nil, fmt.Errorf("postgresql is not supported yet, please use MySQL or OceanBase")
+	default:
+		c, err = NewDirectConnection(cp.addr, cp.user, cp.password, cp.db, cp.charset, cp.collationID, cp.clientCapability, DBTypeMySQL)
+	}
 	if err != nil {
 		return nil, err
 	}

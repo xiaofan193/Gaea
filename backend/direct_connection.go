@@ -66,10 +66,11 @@ type DirectConnection struct {
 	closed                   sync2.AtomicBool
 	capabilityConnectToMySQL uint32
 	moreRowExists            bool
+	dbType                   DBType
 }
 
 // NewDirectConnection return direct and authorised connection to mysql with real net connection
-func NewDirectConnection(addr string, user string, password string, db string, charset string, collationID mysql.CollationID, clientCapability uint32) (*DirectConnection, error) {
+func NewDirectConnection(addr string, user string, password string, db string, charset string, collationID mysql.CollationID, clientCapability uint32, dbType DBType) (*DirectConnection, error) {
 	dc := &DirectConnection{
 		addr:                     addr,
 		user:                     user,
@@ -83,6 +84,7 @@ func NewDirectConnection(addr string, user string, password string, db string, c
 		sessionVariables:         mysql.NewSessionVariables(),
 		capabilityConnectToMySQL: clientCapability,
 		moreRowExists:            false,
+		dbType:                   dbType,
 	}
 	err := dc.connect()
 	return dc, err

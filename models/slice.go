@@ -33,7 +33,7 @@ type Slice struct {
 	Capability      uint32   `json:"capability"`       // capability set by client, this capability is used as mysql client parameter when
 	InitConnect     string   `json:"init_connect"`     // 与MySQL的init_connect相同，连接池中的连接新建之后即会发送请求，以分号分隔
 	HealthCheckSql  string   `json:"health_check_sql"` // 简单语句的健康查询
-	// gaea proxy as client connected to MySQL  default is 0
+	DatabaseType    string   `json:"database_type"`    // 数据库类型: mysql, oceanbase, postgresql. 默认 mysql
 }
 
 func (s *Slice) verify() error {
@@ -65,6 +65,16 @@ func (s *Slice) verify() error {
 
 	if s.Capacity > s.MaxCapacity {
 		return fmt.Errorf("connection pool capacity should be less than max connection pool capactiy")
+	}
+
+	if s.DatabaseType == "" {
+		s.DatabaseType = "mysql"
+	}
+
+	switch s.DatabaseType {
+	case "mysql", "oceanbase", "postgresql":
+	default:
+		return fmt.Errorf("unsupported database type: %s, must be mysql, oceanbase or postgresql", s.DatabaseType)
 	}
 
 	return nil

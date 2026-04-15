@@ -102,6 +102,7 @@ type Slice struct {
 	charset         string
 	collationID     mysql.CollationID
 	HealthCheckSql  string
+	dbType          DBType
 }
 
 // GetSliceName return name of slice
@@ -134,7 +135,7 @@ func (s *Slice) GetConn(fromSlave bool, userType int, localSlaveReadPriority int
 }
 
 func (s *Slice) GetDirectConn(addr string) (*DirectConnection, error) {
-	return NewDirectConnection(addr, s.Cfg.UserName, s.Cfg.Password, "", s.charset, s.collationID, s.Cfg.Capability)
+	return NewDirectConnection(addr, s.Cfg.UserName, s.Cfg.Password, "", s.charset, s.collationID, s.Cfg.Capability, s.dbType)
 }
 
 // GetMasterConn return a connection in master pool
@@ -403,7 +404,7 @@ func (s *Slice) ParseMaster(masterStr string) error {
 		log.Warn("get master(%s) datacenter err:%s,will use default proxy datacenter.", masterStr, err)
 		dc = s.ProxyDatacenter
 	}
-	connectionPool := NewConnectionPool(masterStr, s.Cfg.UserName, s.Cfg.Password, "", s.Cfg.Capacity, s.Cfg.MaxCapacity, idleTimeout, s.charset, s.collationID, s.Cfg.Capability, s.Cfg.InitConnect, dc)
+	connectionPool := NewConnectionPoolWithDBType(masterStr, s.Cfg.UserName, s.Cfg.Password, "", s.Cfg.Capacity, s.Cfg.MaxCapacity, idleTimeout, s.charset, s.collationID, s.Cfg.Capability, s.Cfg.InitConnect, dc, s.dbType)
 	if err := connectionPool.Open(); err != nil {
 		return err
 	}
@@ -467,7 +468,7 @@ func (s *Slice) ParseSlave(slaves []string) (*DBInfo, error) {
 		}
 		datacenter = append(datacenter, dc)
 
-		cp := NewConnectionPool(addrAndWeight[0], s.Cfg.UserName, s.Cfg.Password, "", s.Cfg.Capacity, s.Cfg.MaxCapacity, idleTimeout, s.charset, s.collationID, s.Cfg.Capability, s.Cfg.InitConnect, dc)
+		cp := NewConnectionPoolWithDBType(addrAndWeight[0], s.Cfg.UserName, s.Cfg.Password, "", s.Cfg.Capacity, s.Cfg.MaxCapacity, idleTimeout, s.charset, s.collationID, s.Cfg.Capability, s.Cfg.InitConnect, dc, s.dbType)
 		if err = cp.Open(); err != nil {
 			return nil, err
 		}
@@ -490,6 +491,11 @@ func (s *Slice) ParseSlave(slaves []string) (*DBInfo, error) {
 func (s *Slice) SetCharsetInfo(charset string, collationID mysql.CollationID) {
 	s.charset = charset
 	s.collationID = collationID
+}
+
+// SetDBType sets the database type for the slice
+func (s *Slice) SetDBType(dbType DBType) {
+	s.dbType = dbType
 }
 
 type SlaveStatus struct {

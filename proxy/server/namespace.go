@@ -569,6 +569,11 @@ func parseSlice(cfg *models.Slice, charset string, collationID mysql.CollationID
 	s.ProxyDatacenter = dc
 	s.SetCharsetInfo(charset, collationID)
 	s.HealthCheckSql = cfg.HealthCheckSql
+
+	// set database type
+	dbType, _ := backend.ParseDBType(cfg.DatabaseType)
+	s.SetDBType(dbType)
+
 	// parse master
 	err = s.ParseMaster(cfg.Master)
 	if err != nil {
